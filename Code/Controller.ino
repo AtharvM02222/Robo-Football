@@ -1,7 +1,3 @@
-#include "arduino_secrets.h"
-
-
-#include <PS2X_lib.h>
 
 //to motor driver
 #define m1 9 //data1
