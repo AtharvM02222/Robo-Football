@@ -121,17 +121,23 @@ void back() {
 }
 
 void left() {
-  analogWrite(in3, Speed);
-  analogWrite(in2, Speed);
-  analogWrite(in1, 0);
-  analogWrite(in4, 0);
+  // Motor 1 forward (in1 = HIGH, in2 = LOW)
+  analogWrite(in1, Speed);
+  analogWrite(in2, 0);
+
+  // Motor 2 backward (in3 = LOW, in4 = HIGH)
+  analogWrite(in3, 0);
+  analogWrite(in4, Speed);
 }
 
 void right() {
-  analogWrite(in4, Speed);
-  analogWrite(in1, Speed);
-  analogWrite(in2, 0);
-  analogWrite(in3, 0);
+  // Motor 1 backward (in1 = LOW, in2 = HIGH)
+  analogWrite(in1, 0);
+  analogWrite(in2, Speed);
+
+  // Motor 2 forward (in3 = HIGH, in4 = LOW)
+  analogWrite(in3, Speed);
+  analogWrite(in4, 0);
 }
 
 void forwardleft() {
