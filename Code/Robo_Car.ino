@@ -1,7 +1,7 @@
 #define in1 3 // L298N Motor Driver pins
 #define in2 5
-#define in3 6
-#define in4 11
+#define in3 11
+#define in4 6
 
 int command = 'S'; // Default command is Stop
 int Speed = 100; // Initial speed (range: 0-255)
