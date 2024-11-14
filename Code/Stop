@@ -1,0 +1,149 @@
+#define in1 3 // L298N Motor Driver pins
+#define in2 5
+#define in3 11
+#define in4 6
+
+int command = 'S'; // Default command is Stop
+int Speed = 200; // Initial speed (range: 0-255)
+int lastSpeed = 200; // Store last speed setting to detect changes
+unsigned long lastCommandTime = 0; // Time of the last command
+const unsigned long timeout = 65; // Timeout period in milliseconds
+bool wasCommandExecuted = false; // Track if a command has been executed
+
+void setup() {
+  pinMode(in1, OUTPUT);
+  pinMode(in2, OUTPUT);
+  pinMode(in3, OUTPUT);
+  pinMode(in4, OUTPUT);
+  Serial.begin(9600); // Set the baud rate for Bluetooth communication
+}
+
+void loop() {
+  bool newCommand = false;
+
+  // Check if a command is available
+  if (Serial.available() > 0) {
+    command = Serial.read();
+    lastCommandTime = millis(); // Update the time of the last command
+    newCommand = true; // A new command is received
+    wasCommandExecuted = false; // Reset the executed flag
+  }
+
+  // Execute the command only if it's new or speed has changed
+  if (newCommand || Speed != lastSpeed) {
+    if (!wasCommandExecuted) {
+      handleCommand(command);
+      wasCommandExecuted = true; // Mark that a command was executed
+    }
+    lastSpeed = Speed; // Update lastSpeed to the current Speed
+  }
+
+  // Stop the car if the timeout has passed since the last command
+  if (millis() - lastCommandTime > timeout) {
+    Stop();
+  }
+
+  // Reset command after each loop to prevent it from sticking
+  command = 'S'; // Default stop command
+}
+
+void handleCommand(char cmd) {
+  switch (cmd) {
+    case 'F':
+      forward();
+      break;
+    case 'B':
+      back();
+      break;
+    case 'L':
+      left();
+      break;
+    case 'R':
+      right();
+      break;
+    case 'S': // Stop the robot
+    case 'D': // Stop all movements
+      Stop();
+      break;
+    case '0':
+      Speed = 0;
+      break;
+    case '1':
+      Speed = 20;
+      break;
+    case '2':
+      Speed = 40;
+      break;
+    case '3':
+      Speed = 60;
+      break;
+    case '4':
+      Speed = 80;
+      break;
+    case '5':
+      Speed = 100;
+      break;
+    case '6':
+      Speed = 120;
+      break;
+    case '7':
+      Speed = 140;
+      break;
+    case '8':
+      // Speed = 160;
+      break;
+    case '9':
+      Speed = 180;
+      break;
+    case 'q': // Maximum speed with slider control
+      Speed = 200;
+      break;
+  }
+}
+
+void forward() {
+  // Motor 1 forward (in1 = HIGH, in2 = LOW)
+  analogWrite(in1, Speed);
+  analogWrite(in2, 0);
+
+  // Motor 2 forward (in3 = HIGH, in4 = LOW)
+  analogWrite(in3, Speed);
+  analogWrite(in4, 0);
+}
+
+void back() {
+  // Motor 1 backward (in1 = LOW, in2 = HIGH)
+  analogWrite(in1, 0);
+  analogWrite(in2, Speed);
+
+  // Motor 2 backward (in3 = LOW, in4 = HIGH)
+  analogWrite(in3, 0);
+  analogWrite(in4, Speed);
+}
+
+void left() {
+  // Motor 1 forward (in1 = HIGH, in2 = LOW)
+  analogWrite(in1, Speed);
+  analogWrite(in2, 0);
+
+  // Motor 2 backward (in3 = LOW, in4 = HIGH)
+  analogWrite(in3, 0);
+  analogWrite(in4, Speed);
+}
+
+void right() {
+  // Motor 1 backward (in1 = LOW, in2 = HIGH)
+  analogWrite(in1, 0);
+  analogWrite(in2, Speed);
+
+  // Motor 2 forward (in3 = HIGH, in4 = LOW)
+  analogWrite(in3, Speed);
+  analogWrite(in4, 0);
+}
+
+void Stop() {
+  analogWrite(in1, 0);
+  analogWrite(in2, 0);
+  analogWrite(in3, 0);
+  analogWrite(in4, 0);
+}
