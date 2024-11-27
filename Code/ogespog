@@ -1,0 +1,93 @@
+#include "BluetoothSerial.h"
+
+// Initialize Bluetooth Serial object
+BluetoothSerial SerialBT;
+
+// Pins for L298N Motor Driver
+int IN1 = 26;  // Motor A forward
+int IN2 = 27;  // Motor A backward
+int IN3 = 14;  // Motor B forward
+int IN4 = 12;  // Motor B backward
+
+// Variable to store Bluetooth input
+char command = ' ';
+char lastCommand = ' ';  // To store the last command and reduce redundant actions
+
+void setup() {
+  // Set all motor control pins as output
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  pinMode(IN3, OUTPUT);
+  pinMode(IN4, OUTPUT);
+
+  // Start Bluetooth Serial and give it a name
+  SerialBT.begin("Defender"); // Change this to any name you like
+  Serial.begin(9600);
+  Serial.println("The device started, now you can pair it with Bluetooth!");
+}
+
+void loop() {
+  // Check if data is available on Bluetooth
+  while (SerialBT.available()) {
+    command = SerialBT.read(); // Read the command from the Bluetooth app
+    Serial.print("Received Command: ");
+    Serial.println(command); // Print the command for debugging
+  }
+
+  // If the command has changed, execute new action
+  if (command != lastCommand) {
+    lastCommand = command;
+
+    // Perform actions based on the command received
+    switch (command) {
+      case 'F':
+        // Move forward
+        digitalWrite(IN1, HIGH);
+        digitalWrite(IN2, LOW);
+        digitalWrite(IN3, HIGH);
+        digitalWrite(IN4, LOW);
+        Serial.println("Moving Forward");
+        break;
+
+      case 'B':
+        // Move backward
+        digitalWrite(IN1, LOW);
+        digitalWrite(IN2, HIGH);
+        digitalWrite(IN3, LOW);
+        digitalWrite(IN4, HIGH);
+        Serial.println("Moving Backward");
+        break;
+
+      case 'L':
+        // Turn left - only the right motor moves forward
+        digitalWrite(IN1, LOW);
+        digitalWrite(IN2, LOW);
+        digitalWrite(IN3, HIGH);
+        digitalWrite(IN4, LOW);
+        Serial.println("Turning Left");
+        break;
+
+      case 'R':
+        // Turn right - only the left motor moves forward
+        digitalWrite(IN1, HIGH);
+        digitalWrite(IN2, LOW);
+        digitalWrite(IN3, LOW);
+        digitalWrite(IN4, LOW);
+        Serial.println("Turning Right");
+        break;
+
+      case 'S':
+        // Stop both motors
+        digitalWrite(IN1, LOW);
+        digitalWrite(IN2, LOW);
+        digitalWrite(IN3, LOW);
+        digitalWrite(IN4, LOW);
+        Serial.println("Stopping");
+        break;
+
+      default:
+        // Invalid command, do nothing
+        break;
+    }
+  }
+}
