@@ -1,0 +1,66 @@
+#include <PS3BT.h>      // PS3 controller Bluetooth library
+#include <PS3USB.h>      // For PS3 USB connection (if required, but we'll use Bluetooth here)
+#include <BluetoothSerial.h>  // ESP32 Bluetooth Serial library
+
+// Motor driver pins (adjust as per your hardware)
+#define MOTOR_PIN1 15   // Motor driver pin 1 (forward)
+#define MOTOR_PIN2 2    // Motor driver pin 2 (reverse)
+#define MOTOR_PWM_PIN 14 // PWM pin for motor speed control
+
+// Create BluetoothSerial object for communication
+BluetoothSerial SerialBT;
+
+// PS3 controller setup
+PS3BT ps3(&SerialBT);  // Pass the Bluetooth serial object to the PS3 controller
+
+void setup() {
+  // Initialize serial monitor for debugging
+  Serial.begin(115200);
+  SerialBT.begin("ESP32_PS3_Controller");  // Start Bluetooth communication
+  delay(1000);  // Wait for the Bluetooth to initialize
+
+  // Motor control pins setup
+  pinMode(MOTOR_PIN1, OUTPUT);
+  pinMode(MOTOR_PIN2, OUTPUT);
+  pinMode(MOTOR_PWM_PIN, OUTPUT);
+
+  // Initialize PS3 controller
+  if (ps3.begin()) {
+    Serial.println("PS3 Controller Connected");
+  }
+  else {
+    Serial.println("PS3 Controller not connected");
+  }
+}
+
+void loop() {
+  ps3.update();  // Update PS3 controller state
+
+  // Get joystick values (left stick X and Y)
+  int joystickX = ps3.getAnalogButton(PS3_BUTTON_LX);  // X-axis (left-right)
+  int joystickY = ps3.getAnalogButton(PS3_BUTTON_LY);  // Y-axis (up-down)
+
+  // Map joystick values for motor speed (0-255)
+  int motorSpeed = map(joystickY, 0, 255, 0, 255);  // Map Y-axis to speed (0-255)
+  int motorDirection = 0;
+
+  // Determine motor direction based on joystick Y-axis (up or down)
+  if (joystickY > 127) {
+    motorDirection = HIGH;  // Forward motion
+  }
+  else if (joystickY < 127) {
+    motorDirection = LOW;  // Reverse motion
+  }
+
+  // Control motor speed (PWM) and direction (HIGH/LOW)
+  analogWrite(MOTOR_PWM_PIN, motorSpeed);  // Adjust motor speed based on joystick Y-axis
+  digitalWrite(MOTOR_PIN1, motorDirection);
+  digitalWrite(MOTOR_PIN2, !motorDirection);  // Reverse motor direction if needed
+
+  // Optionally, control sub-direction (steering) using joystick X-axis
+  int subDirection = map(joystickX, 0, 255, -255, 255);  // X-axis for steering or turning
+  Serial.print("Sub-Direction (Steering) X: ");
+  Serial.println(subDirection);
+
+  delay(20);  // Small delay to avoid overloading the loop
+}
