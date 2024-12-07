@@ -1,66 +1,116 @@
-#include <PS3BT.h>      // PS3 controller Bluetooth library
-#include <PS3USB.h>      // For PS3 USB connection (if required, but we'll use Bluetooth here)
-#include <BluetoothSerial.h>  // ESP32 Bluetooth Serial library
+#include <Ps3Controller.h>
+#include <BluetoothSerial.h>
 
-// Motor driver pins (adjust as per your hardware)
-#define MOTOR_PIN1 15   // Motor driver pin 1 (forward)
-#define MOTOR_PIN2 2    // Motor driver pin 2 (reverse)
-#define MOTOR_PWM_PIN 14 // PWM pin for motor speed control
+// Motor driver pins
+#define PWM_L1 14
+#define DIR_L1 27
+#define PWM_R1 26
+#define DIR_R1 25
+#define PWM_L2 33
+#define DIR_L2 32
+#define PWM_R2 23
+#define DIR_R2 22
 
-// Create BluetoothSerial object for 😊
-BluetoothSerial SerialBT;
+BluetoothSerial SerialBT; // Bluetooth Serial object for ESP32
 
-// PS3 controller setup
-PS3BT ps3(&SerialBT);  // Pass the Bluetooth serial object to the PS3 controller
+// Function to set motor speed and direction
+void controlMotor(int pwmChannel, int dirPin, int speed) {
+    speed = constrain(speed, -255, 255); // Constrain speed to valid range
+    if (speed > 0) {
+        digitalWrite(dirPin, HIGH);
+        ledcWrite(pwmChannel, speed);
+    } else if (speed < 0) {
+        digitalWrite(dirPin, LOW);
+        ledcWrite(pwmChannel, -speed);
+    } else {
+        ledcWrite(pwmChannel, 0); // Stop motor
+    }
+}
+
+// Callback for PS3 connection
+void onConnect() {
+    Serial.println("PS3 Controller connected!");
+}
 
 void setup() {
-  // Initialize serial monitor for debugging
-  Serial.begin(115200);
-  SerialBT.begin("ESP32_PS3_Controller");  // Start Bluetooth communication
-  delay(1000);  // Wait for the Bluetooth to initialize
+    Serial.begin(115200);
 
-  // Motor control pins setup
-  pinMode(MOTOR_PIN1, OUTPUT);
-  pinMode(MOTOR_PIN2, OUTPUT);
-  pinMode(MOTOR_PWM_PIN, OUTPUT);
+    // Initialize motor driver pins
+    pinMode(PWM_L1, OUTPUT);
+    pinMode(DIR_L1, OUTPUT);
+    pinMode(PWM_R1, OUTPUT);
+    pinMode(DIR_R1, OUTPUT);
+    pinMode(PWM_L2, OUTPUT);
+    pinMode(DIR_L2, OUTPUT);
+    pinMode(PWM_R2, OUTPUT);
+    pinMode(DIR_R2, OUTPUT);
 
-  // Initialize PS3 controller
-  if (ps3.begin()) {
-    Serial.println("PS3 Controller Connected");
-  }
-  else {
-    Serial.println("PS3 Controller not connected");
-  }
+    // Setup PWM channels
+    ledcSetup(0, 20000, 8); // 20kHz PWM, 8-bit resolution
+    ledcAttachPin(PWM_L1, 0);
+    ledcSetup(1, 20000, 8);
+    ledcAttachPin(PWM_R1, 1);
+    ledcSetup(2, 20000, 8);
+    ledcAttachPin(PWM_L2, 2);
+    ledcSetup(3, 20000, 8);
+    ledcAttachPin(PWM_R2, 3);
+
+    // Initialize Bluetooth
+    if (!SerialBT.begin("Just Won")) { // Bluetooth device name
+        Serial.println("An error occurred initializing Bluetooth.");
+    } else {
+        Serial.println("Bluetooth initialized successfully.");
+    }
+
+    // Initialize PS3 controller
+    Ps3Controller ps3Controller;
+    ps3Controller.begin();
+    ps3Controller.attach(onConnect); // Attach callback for connection
 }
 
 void loop() {
-  ps3.update();  // Update PS3 controller state
+    Ps3Controller ps3Controller;
+    if (ps3Controller.isConnected()) {
+        // Get right joystick values
+        int rightStickX = ps3Controller.data.analog.stick.rx - 128; // Centered at 0
+        int rightStickY = ps3Controller.data.analog.stick.ry - 128; // Centered at 0
 
-  // Get joystick values (left stick X and Y)
-  int joystickX = ps3.getAnalogButton(PS3_BUTTON_LX);  // X-axis (left-right)
-  int joystickY = ps3.getAnalogButton(PS3_BUTTON_LY);  // Y-axis (up-down)
+        // Dead zone to avoid jitter
+        if (abs(rightStickX) < 10) rightStickX = 0;
+        if (abs(rightStickY) < 10) rightStickY = 0;
 
-  // Map joystick values for motor speed (0-255)
-  int motorSpeed = map(joystickY, 0, 255, 0, 255);  // Map Y-axis to speed (0-255)
-  int motorDirection = 0;
+        // Calculate motor speeds based on joystick positions
+        int motorSpeedLeft = map(rightStickY, -128, 128, -255, 255);
+        int motorSpeedRight = map(rightStickY, -128, 128, -255, 255);
 
-  // Determine motor direction based on joystick Y-axis (up or down)
-  if (joystickY > 127) {
-    motorDirection = HIGH;  // Forward motion
-  }
-  else if (joystickY < 127) {
-    motorDirection = LOW;  // Reverse motion
-  }
+        // Adjust for X-axis (left/right movement)
+        if (rightStickX > 10) { // Right
+            motorSpeedLeft -= rightStickX;
+            motorSpeedRight += rightStickX;
+        } else if (rightStickX < -10) { // Left
+            motorSpeedLeft += -rightStickX;
+            motorSpeedRight -= -rightStickX;
+        }
 
-  // Control motor speed (PWM) and direction (HIGH/LOW)
-  analogWrite(MOTOR_PWM_PIN, motorSpeed);  // Adjust motor speed based on joystick Y-axis
-  digitalWrite(MOTOR_PIN1, motorDirection);
-  digitalWrite(MOTOR_PIN2, !motorDirection);  // Reverse motor direction if needed
+        // Adjust for Y-axis (forward/backward movement)
+        if (rightStickY > 10) { // Forward
+            motorSpeedLeft += rightStickY;
+            motorSpeedRight += rightStickY;
+        } else if (rightStickY < -10) { // Backward
+            motorSpeedLeft -= -rightStickY;
+            motorSpeedRight -= -rightStickY;
+        }
 
-  // Optionally, control sub-direction (steering) using joystick X-axis
-  int subDirection = map(joystickX, 0, 255, -255, 255);  // X-axis for steering or turning
-  Serial.print("Sub-Direction (Steering) X: ");
-  Serial.println(subDirection);
-
-  delay(20);  // Small delay to avoid overloading the loop
+        // Apply motor speed to all four motors
+        controlMotor(0, DIR_L1, motorSpeedLeft);  // Left motor 1
+        controlMotor(1, DIR_R1, motorSpeedRight); // Right motor 1
+        controlMotor(2, DIR_L2, motorSpeedLeft);  // Left motor 2
+        controlMotor(3, DIR_R2, motorSpeedRight); // Right motor 2
+    } else {
+        // Stop motors if controller is disconnected
+        controlMotor(0, DIR_L1, 0);
+        controlMotor(1, DIR_R1, 0);
+        controlMotor(2, DIR_L2, 0);
+        controlMotor(3, DIR_R2, 0);
+    }
 }
