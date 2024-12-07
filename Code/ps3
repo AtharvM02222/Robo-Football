@@ -7,7 +7,7 @@
 #define MOTOR_PIN2 2    // Motor driver pin 2 (reverse)
 #define MOTOR_PWM_PIN 14 // PWM pin for motor speed control
 
-// Create BluetoothSerial object for communication
+// Create BluetoothSerial object for 😊
 BluetoothSerial SerialBT;
 
 // PS3 controller setup
