@@ -1,4 +1,4 @@
-with tape
+striker
 d4:8a:fc:98:98:de
 
 without
