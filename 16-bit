@@ -25,7 +25,7 @@ void setup() {
         Serial.println("An error occurred while starting Bluetooth");
         return;
     }
-    Serial.println("Bluetooth is ready! Waiting for commands...");
+    Serial.println("Whats Up I am ThE AttacKER");
 
     // Initialize motor driver pins
     pinMode(EN_L1, OUTPUT);
