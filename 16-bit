@@ -1,1 +1,132 @@
+#include <BluetoothSerial.h>
+#include "Arduino.h"
+
+// Motor driver pins
+#define PWM_L1 14
+#define EN_L1 27
+#define PWM_R1 26
+#define EN_R1 25
+#define PWM_L2 33
+#define EN_L2 32
+#define PWM_R2 23
+#define EN_R2 22
+
+BluetoothSerial SerialBT; // Bluetooth Serial object for ESP32
+
+// Define LEDC PWM properties
+#define PWM_FREQUENCY 5000  // 5 kHz frequency
+#define PWM_RESOLUTION 16   // 16-bit resolution
+#define MAX_DUTY_CYCLE 65535 // Max duty cycle for 16-bit resolution
+
+void setup() {
+    // Initialize serial monitor and Bluetooth serial communication
+    Serial.begin(115200);
+    if (!SerialBT.begin("Attacker")) {   // Bluetooth device name
+        Serial.println("An error occurred while starting Bluetooth");
+        return;
+    }
+    Serial.println("Whats Up I am ThE AttacKER");
+
+    // Initialize motor driver pins
+    pinMode(EN_L1, OUTPUT);
+    pinMode(EN_R1, OUTPUT);
+    pinMode(EN_L2, OUTPUT);
+    pinMode(EN_R2, OUTPUT);
+
+    digitalWrite(EN_L1, HIGH);  // Enable left motor
+    digitalWrite(EN_R1, HIGH);
+    digitalWrite(EN_L2, HIGH);
+    digitalWrite(EN_R2, HIGH);
+
+    // Configure LEDC PWM channels
+    ledcSetup(0, PWM_FREQUENCY, PWM_RESOLUTION); // Channel 0 for PWM_L1
+    ledcSetup(1, PWM_FREQUENCY, PWM_RESOLUTION); // Channel 1 for PWM_R1
+    ledcSetup(2, PWM_FREQUENCY, PWM_RESOLUTION); // Channel 2 for PWM_L2
+    ledcSetup(3, PWM_FREQUENCY, PWM_RESOLUTION); // Channel 3 for PWM_R2
+
+    // Attach GPIO pins to LEDC channels
+    ledcAttachPin(PWM_L1, 0);
+    ledcAttachPin(PWM_R1, 1);
+    ledcAttachPin(PWM_L2, 2);
+    ledcAttachPin(PWM_R2, 3);
+}
+
+void controlMotorSpeed(int channel, int speed) {
+    speed = constrain(speed, 0, MAX_DUTY_CYCLE);  // Constrain speed to valid range
+    ledcWrite(channel, speed);                   // Apply PWM speed
+}
+
+void stopMotor() {
+    // Stop all motors by setting their duty cycles to 0
+    ledcWrite(0, 0); // Channel 0
+    ledcWrite(1, 0); // Channel 1
+    ledcWrite(2, 0); // Channel 2
+    ledcWrite(3, 0); // Channel 3
+}
+
+void loop() {
+    if (SerialBT.available()) {
+        char command = SerialBT.read();
+
+        // Process commands
+        switch (command) {
+            case 'F': // Forward
+                controlMotorSpeed(0, 65535);    
+                controlMotorSpeed(1, 0);        
+                controlMotorSpeed(2, 65535);    
+                controlMotorSpeed(3, 0);        
+                Serial.println("F");
+                break;
+
+            case 'B': // Backward
+                controlMotorSpeed(0, 0);
+                controlMotorSpeed(1, 65535);
+                controlMotorSpeed(2, 0);
+                controlMotorSpeed(3, 65535);
+                Serial.println("B");
+                break;
+
+            case 'R': // Right
+                controlMotorSpeed(2, 0);
+                controlMotorSpeed(3, 65535);
+                controlMotorSpeed(0, 65535);
+                controlMotorSpeed(1, 0);
+                Serial.println("R");
+                break;
+
+            case 'L': // Left
+                controlMotorSpeed(0, 0);
+                controlMotorSpeed(1, 65535);
+                controlMotorSpeed(2, 65535);
+                controlMotorSpeed(3, 0);
+                Serial.println("L");
+                break;
+
+            case 'G': // Forward sharp left
+                controlMotorSpeed(0, 65535);  // Left motor full speed forward
+                controlMotorSpeed(1, 0);
+                controlMotorSpeed(2, 32767);  // Right motor reduced speed forward
+                controlMotorSpeed(3, 0);
+                Serial.println("G");
+                break;
+
+            case 'I': // Forward sharp right
+                controlMotorSpeed(0, 32767);  // Left motor reduced speed forward
+                controlMotorSpeed(1, 0);
+                controlMotorSpeed(2, 65535);  // Right motor full speed forward
+                controlMotorSpeed(3, 0);
+                Serial.println("I");
+                break;
+
+            default: // Stop motors for unknown commands
+                stopMotor();
+                Serial.println("S");
+                break;
+        }
+
+        // Optional: send command feedback to Bluetooth
+        SerialBT.print("Executed command: ");
+        SerialBT.println(command);
+    }
+}
 
