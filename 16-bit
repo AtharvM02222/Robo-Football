@@ -25,7 +25,7 @@ void setup() {
         Serial.println("An error occurred while starting Bluetooth");
         return;
     }
-    Serial.println("Whats Up I am ThE AttacKER");
+    Serial.println("Bluetooth is ready! Waiting for commands...");
 
     // Initialize motor driver pins
     pinMode(EN_L1, OUTPUT);
@@ -71,10 +71,10 @@ void loop() {
         // Process commands
         switch (command) {
             case 'F': // Forward
-                controlMotorSpeed(0, 65535);    
-                controlMotorSpeed(1, 0);        
-                controlMotorSpeed(2, 65535);    
-                controlMotorSpeed(3, 0);        
+                controlMotorSpeed(0, 65535);  // Channel 0
+                controlMotorSpeed(1, 0);      // Channel 1
+                controlMotorSpeed(2, 65535);  // Channel 2
+                controlMotorSpeed(3, 0);      // Channel 3
                 Serial.println("F");
                 break;
 
@@ -100,6 +100,22 @@ void loop() {
                 controlMotorSpeed(2, 65535);
                 controlMotorSpeed(3, 0);
                 Serial.println("L");
+                break;
+
+            case 'H': // Backward Left
+                controlMotorSpeed(0, 0);          // Stop left forward
+                controlMotorSpeed(1, 32767);      // Left backward at half speed
+                controlMotorSpeed(2, 0);          // Stop right forward
+                controlMotorSpeed(3, 65535);      // Right backward at full speed
+                Serial.println("H");
+                break;
+
+            case 'J': // Backward Right
+                controlMotorSpeed(0, 0);          // Stop left forward
+                controlMotorSpeed(1, 65535);      // Left backward at full speed
+                controlMotorSpeed(2, 0);          // Stop right forward
+                controlMotorSpeed(3, 32767);      // Right backward at half speed
+                Serial.println("J");
                 break;
 
             case 'G': // Forward sharp left
@@ -129,4 +145,3 @@ void loop() {
         SerialBT.println(command);
     }
 }
-
